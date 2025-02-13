@@ -1,0 +1,16 @@
+<h2>Our Mug Catalog</h2>
+<div class="catalog-grid">
+    <!-- Loop through your cup items -->
+    <div 
+        class="catalog-item" 
+        *ngFor="let cup of cups" 
+        (click)="goToEditor(cup.id)"
+        title="Click to customize this cup">
+        <!-- Replace the image with the CupPreview component -->
+        <app-cup-preview [cup]="{ id: cup.id, name: cup.name, modelUrl: cup.modelUrl, mtlUrl: cup.mtlUrl}"
+        [canvasWidth]="'30%'"
+        [canvasHeight]="'20%'"></app-cup-preview>
+        <p>{{ cup.name }}</p>
+    </div><br>
+    <a routerLink="/home">Go to Home</a>
+</div>

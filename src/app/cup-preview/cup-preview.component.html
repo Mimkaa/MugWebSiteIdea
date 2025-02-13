@@ -1,2 +1,7 @@
-<!-- cup-preview.component.html -->
-<canvas #canvasElement class="cup-canvas"></canvas>
+<canvas
+  #canvasElement
+  class="cup-canvas"
+  [style.width]="canvasWidth"
+  [style.height]="canvasHeight"
+  style="display: block;"
+></canvas>

@@ -1,0 +1,12 @@
+<p>Editing: {{ cupId }}</p>
+<app-cup-preview
+  [cup]="{
+    id: 'cup1',
+    name: 'Classic Mug',
+    modelUrl: 'assets/models/Mug.obj',
+    mtlUrl: 'assets/models/Mug.mtl'
+  }"
+  [canvasWidth]="'75%'"
+  [canvasHeight]="'90%'"
+></app-cup-preview>
+<a routerLink="/home">Go to Home</a>

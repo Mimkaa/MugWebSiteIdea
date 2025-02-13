@@ -9,28 +9,14 @@
     <h1>Welcome to the Main Application</h1>
   </header>
   <main>
-    <p>
-      This is the full app content that will not be displayed when registration only is enabled.
-    </p>
+    
     <!-- Router outlet for inner routes -->
     <router-outlet></router-outlet>
-    <a routerLink="/register">Go to Registration</a>
+    
+    <ng-container *ngIf="showHomeOnly">
+      <a routerLink="/register">Go to Registration</a><br>
+      <a routerLink="/home/catalogue">Go to Catalogue</a>
+    </ng-container>
 
-    <!-- Small Catalog Section -->
-    <section class="catalog">
-      <h2>Our Mug Collection</h2>
-      <div class="catalog-grid">
-        <!-- Loop through your cup items -->
-        <div 
-          class="catalog-item" 
-          *ngFor="let cup of cups" 
-          (click)="goToEditor(cup.id)"
-          title="Click to customize this cup">
-          <!-- Replace the image with the CupPreview component -->
-          <app-cup-preview [cup]="{ id: cup.id, name: cup.name, modelUrl: cup.modelUrl, mtlUrl: cup.mtlUrl}"></app-cup-preview>
-          <p>{{ cup.name }}</p>
-        </div>
-      </div>
-    </section>
   </main>
 </ng-template>

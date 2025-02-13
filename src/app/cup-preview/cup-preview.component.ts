@@ -1,7 +1,15 @@
-import { Component, OnInit, AfterViewInit, ViewChild, ElementRef, Input } from '@angular/core';
+import {
+  Component,
+  OnInit,
+  AfterViewInit,
+  ViewChild,
+  ElementRef,
+  Input,
+  HostListener
+} from '@angular/core';
 import * as THREE from 'three';
 
-// Import MTLLoader and OBJLoader
+// Import MTLLoader and OBJLoader from three/examples
 import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
 
@@ -13,13 +21,21 @@ import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
 })
 export class CupPreviewComponent implements OnInit, AfterViewInit {
   @ViewChild('canvasElement', { static: true }) canvasRef!: ElementRef<HTMLCanvasElement>;
-  
+
   // Cup data (could include model URL or configuration)
-  @Input() cup!: { id: string; name: string; modelUrl?: string; mtlUrl?: string };
+  @Input() cup!: {
+    id: string;
+    name: string;
+    modelUrl?: string;  // e.g. 'assets/models/cup.obj'
+    mtlUrl?: string;    // e.g. 'assets/models/cup.mtl'
+  };
+
+  @Input() canvasWidth: string = '400px';  // default as a string
+  @Input() canvasHeight: string = '300px'; // default as a string
 
   // three.js essentials
   private scene!: THREE.Scene;
-  private camera!: THREE.PerspectiveCamera | THREE.OrthographicCamera;
+  private camera!: THREE.PerspectiveCamera;
   private renderer!: THREE.WebGLRenderer;
   private model!: THREE.Object3D;
 
@@ -31,7 +47,7 @@ export class CupPreviewComponent implements OnInit, AfterViewInit {
   }
 
   ngAfterViewInit(): void {
-    // Run only on the client side
+    // Only run WebGL code if window is defined (avoid SSR issues)
     if (typeof window !== 'undefined') {
       console.log('ngAfterViewInit: Initializing Three.js...');
       this.initThree();
@@ -39,24 +55,42 @@ export class CupPreviewComponent implements OnInit, AfterViewInit {
     }
   }
 
+  /**
+   * Listens for window resize to dynamically adjust the renderer size.
+   */
+  @HostListener('window:resize', ['$event'])
+  onWindowResize() {
+    this.resizeRendererToDisplaySize();
+  }
+
+  /**
+   * Initialize the scene, camera, renderer, and lights. Then load the model if URLs are provided.
+   */
   private initThree(): void {
     console.log('initThree: Setting up renderer, scene, camera, lights...');
 
-    // Create the renderer and set its size
+    // Get the native canvas element
+    const canvasEl = this.canvasRef.nativeElement;
+
+    // Create the renderer
     this.renderer = new THREE.WebGLRenderer({
-      canvas: this.canvasRef.nativeElement,
+      canvas: canvasEl,
       alpha: true,
       antialias: true
     });
-    this.renderer.setSize(200, 200);
+
+    // Set the renderer size based on the canvas’s current client size
+    this.resizeRendererToDisplaySize();
 
     // Create the scene
     this.scene = new THREE.Scene();
 
     // Setup a perspective camera
-    this.camera = new THREE.PerspectiveCamera(30, 200 / 200, 0.1, 1000);
+    const width = canvasEl.clientWidth;
+    const height = canvasEl.clientHeight;
+    this.camera = new THREE.PerspectiveCamera(30, width / height, 0.1, 1000);
     this.camera.position.set(0.5, 0.3, 0.5);
-    this.camera.lookAt(0, 0, 0);
+    this.camera.lookAt(new THREE.Vector3(0, 0, 0));
     this.camera.updateProjectionMatrix();
 
     // Add basic lighting
@@ -67,7 +101,7 @@ export class CupPreviewComponent implements OnInit, AfterViewInit {
     directionalLight.position.set(10, 10, 10);
     this.scene.add(directionalLight);
 
-    // Decide which model to load
+    // Load model (OBJ + MTL) or fallback geometry
     if (this.cup.modelUrl && this.cup.mtlUrl) {
       console.log('initThree: Loading OBJ + MTL...', this.cup.modelUrl, this.cup.mtlUrl);
       this.loadObjAndMtl(this.cup.modelUrl, this.cup.mtlUrl);
@@ -78,6 +112,27 @@ export class CupPreviewComponent implements OnInit, AfterViewInit {
         this.cup.mtlUrl
       );
       this.createFallbackGeometry();
+    }
+  }
+
+  /**
+   * Resizes the renderer based on the canvas element's client width/height,
+   * and updates the camera aspect ratio accordingly.
+   */
+  private resizeRendererToDisplaySize(): void {
+    if (!this.renderer) return;
+
+    const canvasEl = this.canvasRef.nativeElement;
+    const width = canvasEl.clientWidth;
+    const height = canvasEl.clientHeight;
+
+    // Adjust renderer size
+    this.renderer.setSize(width, height);
+
+    // Also update camera if it exists
+    if (this.camera) {
+      this.camera.aspect = width / height;
+      this.camera.updateProjectionMatrix();
     }
   }
 
@@ -106,7 +161,7 @@ export class CupPreviewComponent implements OnInit, AfterViewInit {
             this.model = obj;
             this.scene.add(this.model);
 
-            // Make the model red
+            // Make the model red (example)
             this.makeRedTexture();
 
             // Debug: Check bounding box
@@ -139,7 +194,7 @@ export class CupPreviewComponent implements OnInit, AfterViewInit {
   }
 
   /**
-   * Create a simple fallback mesh (e.g. a "cup" cylinder).
+   * Create a simple fallback mesh (a "cup-like" cylinder).
    */
   private createFallbackGeometry(): void {
     console.log('createFallbackGeometry: Creating fallback cylinder...');
@@ -148,13 +203,12 @@ export class CupPreviewComponent implements OnInit, AfterViewInit {
     this.model = new THREE.Mesh(geometry, material);
     this.scene.add(this.model);
 
-    // Make the fallback geometry red
+    // Make the fallback geometry red (example)
     this.makeRedTexture();
   }
 
   /**
-   * NEW FUNCTION: Make the model's material red.
-   * This will override any existing color or texture.
+   * Make the model's material red. This will overwrite any existing color or texture.
    */
   private makeRedTexture(): void {
     if (!this.model) {
@@ -165,8 +219,7 @@ export class CupPreviewComponent implements OnInit, AfterViewInit {
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh;
         const mat = mesh.material as THREE.MeshStandardMaterial;
-        // If there's a texture map, you can remove it:
-        // mat.map = null; 
+        mat.map = null;
         mat.color.set(0xff0000);
         mat.needsUpdate = true;
       }
@@ -175,8 +228,8 @@ export class CupPreviewComponent implements OnInit, AfterViewInit {
   }
 
   /**
-   * Change the texture of the loaded model or fallback geometry.
-   * This will assign the texture as the 'map' for each MeshStandardMaterial in the model.
+   * Change the texture of the model or fallback geometry.
+   * Assigns the texture as the 'map' for each MeshStandardMaterial in the model.
    */
   changeTexture(textureUrl: string): void {
     console.log('changeTexture: Loading texture from:', textureUrl);
@@ -195,7 +248,7 @@ export class CupPreviewComponent implements OnInit, AfterViewInit {
           });
           console.log('changeTexture: Texture applied successfully.');
         } else {
-          console.warn('changeTexture: No main model found to apply the texture.');
+          console.warn('changeTexture: No model found to apply the texture.');
         }
       },
       undefined,
