@@ -1,0 +1,43 @@
+<h2>Registration Form</h2>
+<form #registrationForm="ngForm" (ngSubmit)="onSubmit(registrationForm)">
+  <!-- Username -->
+  <div>
+    <label for="username">Username:</label>
+    <input id="username" name="username" ngModel required>
+    <div *ngIf="registrationForm.submitted && registrationForm.controls['username']?.invalid" style="color: red;">
+      Username is required.
+    </div>
+  </div>
+
+  <!-- Email -->
+  <div>
+    <label for="email">Email:</label>
+    <input id="email" type="email" name="email" ngModel required email>
+    <div *ngIf="registrationForm.submitted && registrationForm.controls['email']?.invalid" style="color: red;">
+      A valid email is required.
+    </div>
+  </div>
+
+  <!-- Password -->
+  <div>
+    <label for="password">Password:</label>
+    <input id="password" type="password" name="password" ngModel required minlength="6">
+    <div *ngIf="registrationForm.submitted && registrationForm.controls['password']?.invalid" style="color: red;">
+      Password is required (minimum 6 characters).
+    </div>
+  </div>
+
+  <!-- Confirm Password -->
+  <div>
+    <label for="confirmPassword">Confirm Password:</label>
+    <input id="confirmPassword" type="password" name="confirmPassword" ngModel required minlength="6">
+    <div *ngIf="registrationForm.submitted && registrationForm.controls['confirmPassword']?.invalid" style="color: red;">
+      Confirm Password is required (minimum 6 characters).
+    </div>
+  </div>
+
+  <!-- Submit Button -->
+  <button type="submit" [disabled]="registrationForm.invalid">
+    Register
+  </button>
+</form>
