@@ -3,13 +3,13 @@ import { Router, NavigationEnd, RouterOutlet, RouterModule } from '@angular/rout
 import { filter } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
 import { CupPreviewComponent } from './cup-preview/cup-preview.component';
-
+import { InteractableComponent } from './interactable/interactable.component';
 
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, CommonModule, RouterModule, CupPreviewComponent],
+  imports: [RouterOutlet, CommonModule, RouterModule, CupPreviewComponent, InteractableComponent],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css']
 })

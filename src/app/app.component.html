@@ -16,6 +16,30 @@
     <ng-container *ngIf="showHomeOnly">
       <a routerLink="/register">Go to Registration</a><br>
       <a routerLink="/home/catalogue">Go to Catalogue</a>
+
+      <app-interactable
+      [initialLeft]="'10%'"
+      [initialTop]="'5%'"
+      [initialWidth]="'30%'"
+      [initialHeight]="'50%'"
+      [minWidth]="'20%'"
+      [minHeight]="'20%'"
+      [draggable]="true"
+      [resizable]="true">
+      <div style="padding: 10px;">
+        <app-cup-preview
+          [cup]="{
+            id: 'cup1',
+            name: 'Classic Mug',
+            modelUrl: 'assets/models/Mug.obj',
+            mtlUrl: 'assets/models/Mug.mtl'
+          }"
+          [canvasWidth]="'200%'"
+          [canvasHeight]="'100%'"
+        ></app-cup-preview>
+      </div>
+    </app-interactable>
+
     </ng-container>
 
   </main>
