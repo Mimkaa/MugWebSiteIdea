@@ -1,7 +1,12 @@
-<canvas
-  #canvasElement
-  class="cup-canvas"
-  [style.width]="canvasWidth"
-  [style.height]="canvasHeight"
-  style="display: block; border: 1px solid black;"
-></canvas>
+<div class="interactable">
+  <ng-content>
+    <canvas
+      #canvasElement
+      class="cup-canvas"
+      [style.width]="canvasWidth"
+      [style.height]="canvasHeight"
+      style="display: block; border: 1px solid black;"
+    ></canvas>
+  </ng-content>
+  <div class="resizer" (mousedown)="startResize($event)"></div>
+</div>

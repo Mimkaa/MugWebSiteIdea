@@ -5,13 +5,15 @@ import {
   ViewChild,
   ElementRef,
   Input,
-  HostListener
+  HostListener,
+  Renderer2
 } from '@angular/core';
 import * as THREE from 'three';
 
 // Import MTLLoader and OBJLoader from three/examples
 import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
+import { InteractableComponent } from '../interactable/interactable.component';
 
 @Component({
   selector: 'app-cup-preview',
@@ -19,7 +21,7 @@ import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
   styleUrls: ['./cup-preview.component.css'],
   standalone: true
 })
-export class CupPreviewComponent implements OnInit, AfterViewInit {
+export class CupPreviewComponent extends InteractableComponent implements OnInit, AfterViewInit {
   @ViewChild('canvasElement', { static: true }) canvasRef!: ElementRef<HTMLCanvasElement>;
 
   // Cup data (could include model URL or configuration)
@@ -39,15 +41,49 @@ export class CupPreviewComponent implements OnInit, AfterViewInit {
   private renderer!: THREE.WebGLRenderer;
   private model!: THREE.Object3D;
 
-  constructor() {}
+  constructor(protected override  el: ElementRef, protected  override renderer2: Renderer2) {
+    super(el, renderer2);
+  }
+
+  override updateSizeState(): void {
+    // Get the container's size relative to the screen as percentage strings
+    const containerRelativeSize = this.getContainerSizeRelativeToScreen();
+    console.log("Container size relative to screen:", containerRelativeSize);
+  
+    // Parse the percentage strings and convert to a decimal (0-1)
+    const widthFraction = parseFloat(containerRelativeSize.width) / 100;
+    const heightFraction = parseFloat(containerRelativeSize.height) / 100;
+  
+    // Get screen dimensions (using window.innerWidth/innerHeight for the viewport)
+    const screenWidth = window.innerWidth;
+    const screenHeight = window.innerHeight;
+  
+    // Multiply the fraction by the screen dimensions to get pixel values
+    const newCanvasWidthPx = screenWidth * widthFraction;
+    const newCanvasHeightPx = screenHeight * heightFraction;
+  
+    // Update the canvas element's style to these pixel values
+    if (this.canvasRef) {
+      this.canvasRef.nativeElement.style.width = `${newCanvasWidthPx}px`;
+      this.canvasRef.nativeElement.style.height = `${newCanvasHeightPx}px`;
+      console.log("Canvas size updated to:", newCanvasWidthPx, newCanvasHeightPx);
+    }
+  
+    // Update the Three.js renderer to match the new canvas size.
+    this.resizeRendererToDisplaySize();
+    console.log("Resized");
+  }
+  
+  
 
   ngOnInit(): void {
     // Debugging logs for input data
     console.log('CupPreviewComponent initialized with cup:', this.cup);
   }
 
-  ngAfterViewInit(): void {
+  override ngAfterViewInit(): void {
     // Only run WebGL code if window is defined (avoid SSR issues)
+    this.findContainerBase();
     if (typeof window !== 'undefined') {
       console.log('ngAfterViewInit: Initializing Three.js...');
       this.initThree();
