@@ -15,6 +15,7 @@ import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
 import { InteractableComponent } from '../interactable/interactable.component';
 import { DeveloperModeService } from '../../developer-mode/developer-mode.service';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-cup-preview',
@@ -42,8 +43,11 @@ export class CupPreviewComponent extends InteractableComponent implements OnInit
   private renderer!: THREE.WebGLRenderer;
   private model!: THREE.Object3D;
 
-  constructor(protected override  el: ElementRef, protected  override renderer2: Renderer2, protected override devModeService: DeveloperModeService) {
-    super(el, renderer2, devModeService);
+  constructor(protected override  el: ElementRef, 
+    protected  override renderer2: Renderer2,
+     protected override devModeService: DeveloperModeService,
+    protected override router: Router) {
+    super(el, renderer2, devModeService, router);
   }
 
   override updateSizeState(): void {

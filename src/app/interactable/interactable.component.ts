@@ -1,6 +1,7 @@
 import { Component, ElementRef, HostListener, Renderer2, AfterViewInit, Input, OnChanges, SimpleChanges, OnDestroy } from '@angular/core';
 import { DeveloperModeService } from '../../developer-mode/developer-mode.service';
 import { Subscription } from 'rxjs';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-interactable',
@@ -9,6 +10,7 @@ import { Subscription } from 'rxjs';
   styleUrls: ['./interactable.component.css']
 })
 export class InteractableComponent implements AfterViewInit, OnChanges, OnDestroy {
+  // Inputs defined as strings (percentages or pixel values)
   @Input() initialLeft: string = "0%";
   @Input() initialTop: string = "0%";
   @Input() initialWidth: string = "200px";
@@ -18,7 +20,10 @@ export class InteractableComponent implements AfterViewInit, OnChanges, OnDestro
   @Input() draggable: boolean = true;
   @Input() resizable: boolean = true;
 
-  protected container!: HTMLElement;
+  // New input property: if non-empty, the component becomes redirectable.
+  @Input() redirectUrl: string = '';
+
+  protected container!: HTMLElement; // Reference to the .interactable div
   private isDragging = false;
   private isResizing = false;
   private startX = 0;
@@ -31,14 +36,16 @@ export class InteractableComponent implements AfterViewInit, OnChanges, OnDestro
   private resizeObserver!: ResizeObserver;
   private devModeSubscription!: Subscription;
   
-  // Local variable for developer mode
+  // Local variable for developer mode (read from global service)
   protected developerMode: boolean = false;
 
   constructor(
     protected el: ElementRef,
     protected renderer2: Renderer2,
-    protected devModeService: DeveloperModeService
+    protected devModeService: DeveloperModeService,
+    protected router: Router
   ) {
+    // Subscribe to the global developer mode so this component always reflects its current value.
     this.devModeSubscription = this.devModeService.developerMode$.subscribe(mode => {
       this.developerMode = mode;
       console.log('Developer mode in InteractableComponent is', this.developerMode ? 'ON' : 'OFF');
@@ -46,8 +53,6 @@ export class InteractableComponent implements AfterViewInit, OnChanges, OnDestro
   }
 
   ngAfterViewInit(): void {
-    // Subscribe to the global developer mode
-    
     this.findContainerBase();
   }
   
@@ -78,6 +83,7 @@ export class InteractableComponent implements AfterViewInit, OnChanges, OnDestro
 
   public updateSizeState(): void {
     console.log("Resized");
+    // (Additional code to update state if needed.)
   }
   
   public getContainerSizeRelativeToScreen(): { width: string; height: string } {
@@ -105,9 +111,19 @@ export class InteractableComponent implements AfterViewInit, OnChanges, OnDestro
     this.startHeight = this.container.clientHeight;
   }
 
+  // Click handler: if not in developer mode and redirectUrl is provided, navigate.
+  @HostListener('click', ['$event'])
+  onClick(event: MouseEvent): void {
+    // Only navigate if developer mode is OFF and a non-empty redirectUrl is provided.
+    if (!this.developerMode && this.redirectUrl.trim() !== '') {
+      console.log('Redirecting to:', this.redirectUrl);
+      this.router.navigate([this.redirectUrl]);
+    }
+  }
+
   @HostListener('mousedown', ['$event'])
   onMouseDown(event: MouseEvent): void {
-    // Only allow dragging if component is draggable and developerMode is ON
+    // Only allow dragging if draggable is true and developer mode is ON.
     if (!this.draggable || !this.developerMode) {
       console.log("Dragging not allowed. Draggable:", this.draggable, "Developer mode:", this.developerMode);
       return;
