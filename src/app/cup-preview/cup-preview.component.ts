@@ -14,6 +14,7 @@ import * as THREE from 'three';
 import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
 import { InteractableComponent } from '../interactable/interactable.component';
+import { DeveloperModeService } from '../../developer-mode/developer-mode.service';
 
 @Component({
   selector: 'app-cup-preview',
@@ -41,8 +42,8 @@ export class CupPreviewComponent extends InteractableComponent implements OnInit
   private renderer!: THREE.WebGLRenderer;
   private model!: THREE.Object3D;
 
-  constructor(protected override  el: ElementRef, protected  override renderer2: Renderer2) {
-    super(el, renderer2);
+  constructor(protected override  el: ElementRef, protected  override renderer2: Renderer2, protected override devModeService: DeveloperModeService) {
+    super(el, renderer2, devModeService);
   }
 
   override updateSizeState(): void {
