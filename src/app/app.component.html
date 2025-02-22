@@ -1,22 +1,49 @@
+<!-- 
+     If showRegistrationOnly is true, display the registration outlet.
+     Otherwise, display the "fullApp" content.
+-->
 <ng-container *ngIf="showRegistrationOnly; else fullApp">
   <router-outlet></router-outlet>
 </ng-container>
 
+<!-- 
+     Move the dynamic container OUTSIDE the ng-template, 
+     so it exists regardless of showRegistrationOnly or showHomeOnly.
+     This ensures ViewChild can find it at initialization if static = true.
+-->
+<ng-container #dynamicContainer></ng-container>
+
+<!--
+     Place the developer context menu outside the ng-template
+     (or you can keep it inside if you prefer, 
+      but typically you'll keep it outside to always have access).
+-->
+<app-dev-context-menu
+  *ngIf="developerMode"
+  (addComponentAction)="handleAddComponent($event)"
+  (deleteComponentAction)="handleDeleteComponent()">
+</app-dev-context-menu>
+
 <ng-template #fullApp>
   <header>
     <h1>Welcome to the Main Application</h1>
-    <!-- Button to toggle developer mode -->
     <button (click)="toggleDeveloperMode()">
       Toggle Developer Mode ({{ developerMode ? 'On' : 'Off' }})
     </button>
+    <button (click)="sendGreeting()">Send Greeting</button>
   </header>
+
   <main>
     <router-outlet></router-outlet>
+
     <ng-container *ngIf="showHomeOnly">
       <a routerLink="/register">Go to Registration</a><br>
       <a routerLink="/home/catalogue">Go to Catalogue</a>
-      
-      <!-- Pass the developerMode flag to your interactable components -->
+
+      <!-- Greeting from the backend, if any -->
+      <p *ngIf="greeting">Greeting: {{ greeting }}</p>
+
+      <!-- Existing interactable component example -->
       <app-interactable
         [initialLeft]="'10%'"
         [initialTop]="'5%'"
@@ -25,11 +52,15 @@
         [minWidth]="'20%'"
         [minHeight]="'20%'"
         [draggable]="true"
-        [resizable]="true"
-        >
+        [resizable]="true">
         <div style="padding: 10px;">
           <app-cup-preview
-            [cup]="{ id: 'cup1', name: 'Classic Mug', modelUrl: 'assets/models/Mug.obj', mtlUrl: 'assets/models/Mug.mtl' }">
+            [cup]="{
+               id: 'cup1',
+               name: 'Classic Mug',
+               modelUrl: 'assets/models/Mug.obj',
+               mtlUrl: 'assets/models/Mug.mtl'
+            }">
           </app-cup-preview>
         </div>
       </app-interactable>

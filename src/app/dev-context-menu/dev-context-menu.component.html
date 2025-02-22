@@ -1,0 +1,15 @@
+<!-- A container that might represent your dev area -->
+<div class="dev-area">
+    <!-- Your dev area content -->
+  </div>
+  
+  <!-- The custom context menu. We use [ngStyle] to position it -->
+  <div *ngIf="showContextMenu" class="context-menu" [ngStyle]="{'left.px': menuX, 'top.px': menuY}">
+    <!-- Loop through each available component type -->
+    <div *ngFor="let compType of availableComponents">
+      <button (click)="addComponent(compType)">Add {{ compType }}</button>
+    </div>
+    <!-- You can keep additional options like delete -->
+    <button (click)="deleteComponent()">Delete Component</button>
+  </div>
+  

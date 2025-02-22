@@ -2,6 +2,7 @@ import { Component, ElementRef, HostListener, Renderer2, AfterViewInit, Input, O
 import { DeveloperModeService } from '../../developer-mode/developer-mode.service';
 import { Subscription } from 'rxjs';
 import { Router } from '@angular/router';
+import ResizeObserver from 'resize-observer-polyfill';
 
 @Component({
   selector: 'app-interactable',
@@ -50,6 +51,8 @@ export class InteractableComponent implements AfterViewInit, OnChanges, OnDestro
       this.developerMode = mode;
       console.log('Developer mode in InteractableComponent is', this.developerMode ? 'ON' : 'OFF');
     });
+    
+    
   }
 
   ngAfterViewInit(): void {

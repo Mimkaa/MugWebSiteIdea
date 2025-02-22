@@ -1,0 +1,49 @@
+.dev-area {
+    position: fixed;    /* or absolute */
+    top: 0;
+    left: 0;
+    width: 100vw;       /* cover full width of the viewport */
+    height: 100vh;      /* cover full height of the viewport */
+    
+    border: none; /* if you want a visible border around the background */
+    padding: 20px;
+    
+    z-index: -1;        /* put it behind elements with z-index >= 0 */
+    pointer-events: none; /* ensures clicks pass through to elements above */
+    /*background: #f8f8f8;    optional background color */
+  }
+  
+  
+  /* Our custom context menu container */
+  .context-menu {
+    position: fixed; /* covers the whole viewport */
+    top: 0;
+    left: 0;
+    width: 15vw;
+    height: 10vh;
+  
+    /* A background color or image, if desired */
+    background-color: #ffffff;
+  
+    /* Lower z-index so everything else is stacked on top */
+    z-index: 1000;
+    /* Optionally, disable pointer events so it doesn't block clicks: */
+    /* pointer-events: none;*/
+  }
+  
+  
+  /* Individual menu buttons */
+  .context-menu button {
+    display: block;
+    width: 100%;
+    border: none;
+    background: transparent;
+    text-align: left;
+    padding: 5px 10px;
+    cursor: pointer;
+  }
+  
+  .context-menu button:hover {
+    background-color: #f0f0f0;
+  }
+  
