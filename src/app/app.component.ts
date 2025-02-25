@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild, ViewContainerRef } from '@angular/core';
+import { Component, OnInit, ViewChild, ViewContainerRef, HostListener } from '@angular/core';
 import { Router, NavigationEnd, RouterOutlet, RouterModule } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
@@ -34,6 +34,10 @@ export class AppComponent implements OnInit {
   @ViewChild('dynamicContainer', { read: ViewContainerRef, static: true })
   dynamicContainer!: ViewContainerRef;
 
+  // Variables to store the last mouse coordinates.
+  lastMouseX: number = 0;
+  lastMouseY: number = 0;
+
   constructor(
     private router: Router,
     private devModeService: DeveloperModeService,
@@ -59,6 +63,13 @@ export class AppComponent implements OnInit {
       });
   }
 
+  // Capture mouse clicks to store the last mouse coordinates.
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    this.lastMouseX = event.clientX;
+    this.lastMouseY = event.clientY;
+  }
+
   toggleDeveloperMode(): void {
     this.devModeService.toggleDeveloperMode();
   }
@@ -75,7 +86,7 @@ export class AppComponent implements OnInit {
     });
   }
 
-  // Called when the dev context menu emits addComponentAction
+  // Called when the dev context menu emits addComponentAction.
   handleAddComponent(componentType: string): void {
     console.log('Parent handling add component of type:', componentType);
 
@@ -90,20 +101,17 @@ export class AppComponent implements OnInit {
     const componentRef = this.dynamicContainer.createComponent(componentClass);
 
     // 3) Hard-code the modelUrl/mtlUrl and set myUrl on the new component.
-    // Note: CupPreviewComponent (or its parent InteractableComponent) should declare
-    // an @Input() property called myUrl and an @Output() event emitter named deactivate.
     (componentRef.instance as any).cup = {
       id: 'cup-unique-id',
       name: 'My Hardcoded Cup',
       modelUrl: 'assets/models/Mug.obj',
       mtlUrl: 'assets/models/Mug.mtl',
-      myUrl: this.router.url  // Optionally pass it here as well.
+      myUrl: this.router.url
     };
     (componentRef.instance as any).myUrl = this.router.url;
     console.log(`Assigned myUrl: ${(componentRef.instance as any).myUrl}`);
 
     // 4) Subscribe to the deactivate event from the dynamic component.
-    // When the component emits deactivate, remove it from the dynamic container.
     (componentRef.instance as any).deactivate.subscribe(() => {
       console.log('Deactivation event received from component.');
       const index = this.dynamicContainer.indexOf(componentRef.hostView);
@@ -114,9 +122,50 @@ export class AppComponent implements OnInit {
     });
   }
 
-  // Called when the dev context menu emits deleteComponentAction
+  // Called when the dev context menu emits deleteComponentAction.
   handleDeleteComponent(): void {
     console.log('Parent handling delete component');
-    // Implement your logic for component removal if needed.
+    
+    // Ensure we have valid mouse coordinates.
+    const mouseX = this.lastMouseX;
+    const mouseY = this.lastMouseY;
+    
+    let closestIndex = -1;
+    let minDistance = Number.POSITIVE_INFINITY;
+    
+    const viewCount = this.dynamicContainer.length;
+    // Loop through each dynamic component's view.
+    for (let i = 0; i < viewCount; i++) {
+      const viewRef = this.dynamicContainer.get(i);
+      if (viewRef) {
+        // Get the root DOM nodes of the view.
+        const rootNodes = (viewRef as any).rootNodes as HTMLElement[];
+        if (rootNodes && rootNodes.length) {
+          // For each node, compute the center and distance to the mouse.
+          for (const node of rootNodes) {
+            if (node instanceof HTMLElement) {
+              const rect = node.getBoundingClientRect();
+              const centerX = rect.left + rect.width / 2;
+              const centerY = rect.top + rect.height / 2;
+              const dx = mouseX - centerX;
+              const dy = mouseY - centerY;
+              const distance = Math.sqrt(dx * dx + dy * dy);
+              if (distance < minDistance) {
+                minDistance = distance;
+                closestIndex = i;
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    if (closestIndex !== -1) {
+      console.log(`Closest dynamic component found at index ${closestIndex} (distance: ${minDistance.toFixed(2)}). Removing it.`);
+      this.dynamicContainer.remove(closestIndex);
+    } else {
+      console.warn('No dynamic component found near the mouse.');
+    }
   }
+  
 }
