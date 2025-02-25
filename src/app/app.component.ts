@@ -30,7 +30,7 @@ export class AppComponent implements OnInit {
   developerMode = false;
   greeting = '';
 
-  // Because the container is ALWAYS in the DOM, we can set static = true
+  // The container into which dynamic components will be inserted.
   @ViewChild('dynamicContainer', { read: ViewContainerRef, static: true })
   dynamicContainer!: ViewContainerRef;
 
@@ -39,7 +39,7 @@ export class AppComponent implements OnInit {
     private devModeService: DeveloperModeService,
     private greetingService: GreetingService
   ) {
-    // Subscribe to developer mode changes
+    // Subscribe to developer mode changes.
     this.devModeService.developerMode$.subscribe(mode => {
       this.developerMode = mode;
       console.log('Developer mode is', this.developerMode ? 'ON' : 'OFF');
@@ -75,35 +75,48 @@ export class AppComponent implements OnInit {
     });
   }
 
- // Called when the dev context menu emits addComponentAction
- handleAddComponent(componentType: string): void {
-  console.log('Parent handling add component of type:', componentType);
+  // Called when the dev context menu emits addComponentAction
+  handleAddComponent(componentType: string): void {
+    console.log('Parent handling add component of type:', componentType);
 
-  // 1) Lookup the component class from your block map
-  const componentClass = BLOCK_MAP[componentType];
-  if (!componentClass) {
-    console.warn(`Component type "${componentType}" is not defined in BLOCK_MAP`);
-    return;
+    // 1) Lookup the component class from your block map.
+    const componentClass = BLOCK_MAP[componentType];
+    if (!componentClass) {
+      console.warn(`Component type "${componentType}" is not defined in BLOCK_MAP`);
+      return;
+    }
+
+    // 2) Dynamically create the component.
+    const componentRef = this.dynamicContainer.createComponent(componentClass);
+
+    // 3) Hard-code the modelUrl/mtlUrl and set myUrl on the new component.
+    // Note: CupPreviewComponent (or its parent InteractableComponent) should declare
+    // an @Input() property called myUrl and an @Output() event emitter named deactivate.
+    (componentRef.instance as any).cup = {
+      id: 'cup-unique-id',
+      name: 'My Hardcoded Cup',
+      modelUrl: 'assets/models/Mug.obj',
+      mtlUrl: 'assets/models/Mug.mtl',
+      myUrl: this.router.url  // Optionally pass it here as well.
+    };
+    (componentRef.instance as any).myUrl = this.router.url;
+    console.log(`Assigned myUrl: ${(componentRef.instance as any).myUrl}`);
+
+    // 4) Subscribe to the deactivate event from the dynamic component.
+    // When the component emits deactivate, remove it from the dynamic container.
+    (componentRef.instance as any).deactivate.subscribe(() => {
+      console.log('Deactivation event received from component.');
+      const index = this.dynamicContainer.indexOf(componentRef.hostView);
+      if (index !== -1) {
+        this.dynamicContainer.remove(index);
+        console.log('Component removed from dynamic container.');
+      }
+    });
   }
-
-  // 2) Dynamically create the component
-  const componentRef = this.dynamicContainer.createComponent(componentClass);
-
-  // 3) Hard-code the modelUrl/mtlUrl by casting the instance to any
-  (componentRef.instance as any).cup = {
-    id: 'cup-unique-id',
-    name: 'My Hardcoded Cup',
-    modelUrl: 'assets/models/Mug.obj',
-    mtlUrl: 'assets/models/Mug.mtl'
-  };
-}
-
-
-  
 
   // Called when the dev context menu emits deleteComponentAction
   handleDeleteComponent(): void {
     console.log('Parent handling delete component');
-    // Implement your logic for component removal if needed
+    // Implement your logic for component removal if needed.
   }
 }

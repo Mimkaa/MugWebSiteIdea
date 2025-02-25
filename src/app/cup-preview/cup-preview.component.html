@@ -1,4 +1,4 @@
-<div class="interactable">
+<div class="interactable" *ngIf="currentUrl === myUrl">
   <ng-content>
     <canvas
       #canvasElement

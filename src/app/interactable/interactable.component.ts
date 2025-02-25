@@ -1,7 +1,21 @@
-import { Component, ElementRef, HostListener, Renderer2, AfterViewInit, Input, OnChanges, SimpleChanges, OnDestroy } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  HostListener,
+  Renderer2,
+  AfterViewInit,
+  Input,
+  OnChanges,
+  SimpleChanges,
+  OnDestroy,
+  OnInit,
+  Output,
+  EventEmitter
+} from '@angular/core';
 import { DeveloperModeService } from '../../developer-mode/developer-mode.service';
 import { Subscription } from 'rxjs';
-import { Router } from '@angular/router';
+import { Router, NavigationEnd } from '@angular/router';
+import { filter } from 'rxjs/operators';
 import ResizeObserver from 'resize-observer-polyfill';
 
 @Component({
@@ -10,7 +24,7 @@ import ResizeObserver from 'resize-observer-polyfill';
   templateUrl: './interactable.component.html',
   styleUrls: ['./interactable.component.css']
 })
-export class InteractableComponent implements AfterViewInit, OnChanges, OnDestroy {
+export class InteractableComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy {
   // Inputs defined as strings (percentages or pixel values)
   @Input() initialLeft: string = "0%";
   @Input() initialTop: string = "0%";
@@ -21,8 +35,17 @@ export class InteractableComponent implements AfterViewInit, OnChanges, OnDestro
   @Input() draggable: boolean = true;
   @Input() resizable: boolean = true;
 
-  // New input property: if non-empty, the component becomes redirectable.
+  // Input for redirectUrl
   @Input() redirectUrl: string = '';
+
+  // Input for the URL where this component should be active.
+  @Input() myUrl: string = '/home';
+
+  // Property to store the actual current URL
+  public currentUrl: string = '/home';
+
+  // Output event emitter to signal that the component should be removed
+  @Output() deactivate: EventEmitter<void> = new EventEmitter<void>();
 
   protected container!: HTMLElement; // Reference to the .interactable div
   private isDragging = false;
@@ -36,6 +59,7 @@ export class InteractableComponent implements AfterViewInit, OnChanges, OnDestro
   
   private resizeObserver!: ResizeObserver;
   private devModeSubscription!: Subscription;
+  private routerSubscription!: Subscription;
   
   // Local variable for developer mode (read from global service)
   protected developerMode: boolean = false;
@@ -46,13 +70,30 @@ export class InteractableComponent implements AfterViewInit, OnChanges, OnDestro
     protected devModeService: DeveloperModeService,
     protected router: Router
   ) {
-    // Subscribe to the global developer mode so this component always reflects its current value.
+    // Subscribe to developer mode changes.
     this.devModeSubscription = this.devModeService.developerMode$.subscribe(mode => {
       this.developerMode = mode;
       console.log('Developer mode in InteractableComponent is', this.developerMode ? 'ON' : 'OFF');
     });
+  }
+
+  ngOnInit(): void {
+    // Set currentUrl from the router immediately.
+    this.currentUrl = this.router.url;
+    console.log('Initial currentUrl:', this.currentUrl);
     
-    
+    // Subscribe to router events to update currentUrl whenever navigation ends.
+    this.routerSubscription = this.router.events
+      .pipe(filter(event => event instanceof NavigationEnd))
+      .subscribe((event: NavigationEnd) => {
+        this.currentUrl = event.urlAfterRedirects;
+        console.log('Current URL updated:', this.currentUrl);
+        // If the current URL no longer matches the desired myUrl, emit the deactivate event.
+        if (this.currentUrl !== this.myUrl) {
+          console.log('URL mismatch detected, emitting deactivate event.');
+          this.deactivate.emit();
+        }
+      });
   }
 
   ngAfterViewInit(): void {
@@ -63,6 +104,9 @@ export class InteractableComponent implements AfterViewInit, OnChanges, OnDestro
     if (this.container) {
       this.applyStyles();
     }
+    if (changes['myUrl']) {
+      console.log('myUrl changed to:', changes['myUrl'].currentValue);
+    }
   }
   
   ngOnDestroy(): void {
@@ -72,11 +116,21 @@ export class InteractableComponent implements AfterViewInit, OnChanges, OnDestro
     if (this.devModeSubscription) {
       this.devModeSubscription.unsubscribe();
     }
+    if (this.routerSubscription) {
+      this.routerSubscription.unsubscribe();
+    }
   }
 
   public findContainerBase(): void {
     this.container = this.el.nativeElement.querySelector('.interactable');
     console.log('Container element:', this.container);
+    
+    // Only proceed if the container is defined
+    if (!this.container) {
+      console.warn('Container not found. Skipping applyStyles and resizeObserver setup.');
+      return;
+    }
+    
     this.applyStyles();
     this.resizeObserver = new ResizeObserver(() => {
       this.updateSizeState();
@@ -104,6 +158,9 @@ export class InteractableComponent implements AfterViewInit, OnChanges, OnDestro
   }
 
   private applyStyles(): void {
+    if (!this.container) {
+      return;
+    }
     this.renderer2.setStyle(this.container, 'left', this.initialLeft);
     this.renderer2.setStyle(this.container, 'top', this.initialTop);
     this.renderer2.setStyle(this.container, 'width', this.initialWidth);
@@ -117,7 +174,6 @@ export class InteractableComponent implements AfterViewInit, OnChanges, OnDestro
   // Click handler: if not in developer mode and redirectUrl is provided, navigate.
   @HostListener('click', ['$event'])
   onClick(event: MouseEvent): void {
-    // Only navigate if developer mode is OFF and a non-empty redirectUrl is provided.
     if (!this.developerMode && this.redirectUrl.trim() !== '') {
       console.log('Redirecting to:', this.redirectUrl);
       this.router.navigate([this.redirectUrl]);
@@ -126,9 +182,10 @@ export class InteractableComponent implements AfterViewInit, OnChanges, OnDestro
 
   @HostListener('mousedown', ['$event'])
   onMouseDown(event: MouseEvent): void {
-    // Only allow dragging if draggable is true and developer mode is ON.
+    // For debugging, log myUrl and currentUrl.
+    console.log('myUrl:', this.myUrl, 'currentUrl:', this.currentUrl);
+    
     if (!this.draggable || !this.developerMode) {
-      console.log("Dragging not allowed. Draggable:", this.draggable, "Developer mode:", this.developerMode);
       return;
     }
     console.log('mousedown event:', event);

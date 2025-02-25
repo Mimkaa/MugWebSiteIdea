@@ -6,7 +6,10 @@ import {
   ElementRef,
   Input,
   HostListener,
-  Renderer2
+  Renderer2,
+  OnChanges,
+  SimpleChanges,
+  OnDestroy
 } from '@angular/core';
 import * as THREE from 'three';
 
@@ -15,16 +18,18 @@ import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
 import { InteractableComponent } from '../interactable/interactable.component';
 import { DeveloperModeService } from '../../developer-mode/developer-mode.service';
+import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-cup-preview',
   templateUrl: './cup-preview.component.html',
   styleUrls: ['./cup-preview.component.css'],
-  standalone: true
+  standalone: true,
+  imports: [CommonModule]
 })
-export class CupPreviewComponent extends InteractableComponent implements OnInit, AfterViewInit {
-  @ViewChild('canvasElement', { static: true }) canvasRef!: ElementRef<HTMLCanvasElement>;
+export class CupPreviewComponent extends InteractableComponent implements OnInit, AfterViewInit, OnChanges, OnDestroy {
+  @ViewChild('canvasElement', { static: false }) canvasRef!: ElementRef<HTMLCanvasElement>;
 
   // Cup data (could include model URL or configuration)
   @Input() cup!: {
@@ -43,14 +48,22 @@ export class CupPreviewComponent extends InteractableComponent implements OnInit
   private renderer!: THREE.WebGLRenderer;
   private model!: THREE.Object3D;
 
-  constructor(protected override  el: ElementRef, 
-    protected  override renderer2: Renderer2,
-     protected override devModeService: DeveloperModeService,
-    protected override router: Router) {
+  constructor(
+    protected override el: ElementRef, 
+    protected override renderer2: Renderer2,
+    protected override devModeService: DeveloperModeService,
+    protected override router: Router
+  ) {
     super(el, renderer2, devModeService, router);
   }
 
   override updateSizeState(): void {
+    // Ensure canvasRef and its nativeElement exist before updating
+    if (!this.canvasRef || !this.canvasRef.nativeElement) {
+      console.warn('updateSizeState: Canvas reference is not defined.');
+      return;
+    }
+  
     // Get the container's size relative to the screen as percentage strings
     const containerRelativeSize = this.getContainerSizeRelativeToScreen();
     console.log("Container size relative to screen:", containerRelativeSize);
@@ -68,26 +81,16 @@ export class CupPreviewComponent extends InteractableComponent implements OnInit
     const newCanvasHeightPx = screenHeight * heightFraction;
   
     // Update the canvas element's style to these pixel values
-    if (this.canvasRef) {
-      this.canvasRef.nativeElement.style.width = `${newCanvasWidthPx}px`;
-      this.canvasRef.nativeElement.style.height = `${newCanvasHeightPx}px`;
-      console.log("Canvas size updated to:", newCanvasWidthPx, newCanvasHeightPx);
-    }
+    this.canvasRef.nativeElement.style.width = `${newCanvasWidthPx}px`;
+    this.canvasRef.nativeElement.style.height = `${newCanvasHeightPx}px`;
+    console.log("Canvas size updated to:", newCanvasWidthPx, newCanvasHeightPx);
   
     // Update the Three.js renderer to match the new canvas size.
     this.resizeRendererToDisplaySize();
     console.log("Resized");
   }
   
-  
-
-  ngOnInit(): void {
-    // Debugging logs for input data
-    console.log('CupPreviewComponent initialized with cup:', this.cup);
-  }
-
   override ngAfterViewInit(): void {
-    // Only run WebGL code if window is defined (avoid SSR issues)
     this.findContainerBase();
     if (typeof window !== 'undefined') {
       console.log('ngAfterViewInit: Initializing Three.js...');
@@ -96,18 +99,17 @@ export class CupPreviewComponent extends InteractableComponent implements OnInit
     }
   }
 
-  /**
-   * Listens for window resize to dynamically adjust the renderer size.
-   */
   @HostListener('window:resize', ['$event'])
   onWindowResize() {
     this.resizeRendererToDisplaySize();
   }
 
-  /**
-   * Initialize the scene, camera, renderer, and lights. Then load the model if URLs are provided.
-   */
   private initThree(): void {
+    // Ensure the canvas reference is available
+    if (!this.canvasRef || !this.canvasRef.nativeElement) {
+      console.warn('initThree: Canvas reference is undefined.');
+      return;
+    }
     console.log('initThree: Setting up renderer, scene, camera, lights...');
 
     // Get the native canvas element
@@ -156,20 +158,18 @@ export class CupPreviewComponent extends InteractableComponent implements OnInit
     }
   }
 
-  /**
-   * Resizes the renderer based on the canvas element's client width/height,
-   * and updates the camera aspect ratio accordingly.
-   */
   private resizeRendererToDisplaySize(): void {
-    if (!this.renderer) return;
-
+    if (!this.renderer || !this.canvasRef || !this.canvasRef.nativeElement) {
+      return;
+    }
+  
     const canvasEl = this.canvasRef.nativeElement;
     const width = canvasEl.clientWidth;
     const height = canvasEl.clientHeight;
-
+  
     // Adjust renderer size
     this.renderer.setSize(width, height);
-
+  
     // Also update camera if it exists
     if (this.camera) {
       this.camera.aspect = width / height;
@@ -177,9 +177,6 @@ export class CupPreviewComponent extends InteractableComponent implements OnInit
     }
   }
 
-  /**
-   * Load OBJ + MTL files, then add the loaded model to the scene.
-   */
   private loadObjAndMtl(objPath: string, mtlPath: string): void {
     console.log('loadObjAndMtl: Starting MTLLoader for:', mtlPath);
 
@@ -210,7 +207,6 @@ export class CupPreviewComponent extends InteractableComponent implements OnInit
             console.log('loadObjAndMtl: Loaded model bounding box:', box);
           },
           (xhr) => {
-            // Progress event for OBJ
             const percent = (xhr.loaded / xhr.total) * 100;
             console.log(`OBJ loading progress: ${percent.toFixed(2)}%`);
           },
@@ -222,7 +218,6 @@ export class CupPreviewComponent extends InteractableComponent implements OnInit
         );
       },
       (xhr) => {
-        // Progress event for MTL
         const percent = (xhr.loaded / xhr.total) * 100;
         console.log(`MTL loading progress: ${percent.toFixed(2)}%`);
       },
@@ -234,9 +229,6 @@ export class CupPreviewComponent extends InteractableComponent implements OnInit
     );
   }
 
-  /**
-   * Create a simple fallback mesh (a "cup-like" cylinder).
-   */
   private createFallbackGeometry(): void {
     console.log('createFallbackGeometry: Creating fallback cylinder...');
     const geometry = new THREE.CylinderGeometry(1.5, 1.5, 3, 32);
@@ -248,9 +240,6 @@ export class CupPreviewComponent extends InteractableComponent implements OnInit
     this.makeRedTexture();
   }
 
-  /**
-   * Make the model's material red. This will overwrite any existing color or texture.
-   */
   private makeRedTexture(): void {
     if (!this.model) {
       console.warn('makeRedTexture: No model to color.');
@@ -268,10 +257,6 @@ export class CupPreviewComponent extends InteractableComponent implements OnInit
     console.log('makeRedTexture: Model material has been set to red.');
   }
 
-  /**
-   * Change the texture of the model or fallback geometry.
-   * Assigns the texture as the 'map' for each MeshStandardMaterial in the model.
-   */
   changeTexture(textureUrl: string): void {
     console.log('changeTexture: Loading texture from:', textureUrl);
     const loader = new THREE.TextureLoader();
@@ -299,10 +284,11 @@ export class CupPreviewComponent extends InteractableComponent implements OnInit
     );
   }
 
-  /**
-   * Animation loop
-   */
   private animate = (): void => {
+    // Ensure renderer and canvas are defined before proceeding
+    if (!this.renderer || !this.canvasRef || !this.canvasRef.nativeElement) {
+      return;
+    }
     requestAnimationFrame(this.animate);
     this.renderer.render(this.scene, this.camera);
   };
