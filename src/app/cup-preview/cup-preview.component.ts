@@ -20,6 +20,7 @@ import { InteractableComponent } from '../interactable/interactable.component';
 import { DeveloperModeService } from '../../developer-mode/developer-mode.service';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
+import { PageComponentService, PageComponent } from '../page-component/page-component.service';
 
 @Component({
   selector: 'app-cup-preview',
@@ -52,9 +53,10 @@ export class CupPreviewComponent extends InteractableComponent implements OnInit
     protected override el: ElementRef, 
     protected override renderer2: Renderer2,
     protected override devModeService: DeveloperModeService,
-    protected override router: Router
+    protected override router: Router,
+    protected  pageCompServ: PageComponentService
   ) {
-    super(el, renderer2, devModeService, router);
+    super(el, renderer2, devModeService, router, pageCompServ);
   }
 
   override updateSizeState(): void {

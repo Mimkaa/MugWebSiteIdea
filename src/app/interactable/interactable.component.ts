@@ -17,6 +17,8 @@ import { Subscription } from 'rxjs';
 import { Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import ResizeObserver from 'resize-observer-polyfill';
+import { v4 as uuidv4 } from 'uuid';
+import { PageComponentService, PageComponent } from '../page-component/page-component.service';
 
 @Component({
   selector: 'app-interactable',
@@ -64,11 +66,24 @@ export class InteractableComponent implements OnInit, AfterViewInit, OnChanges, 
   // Local variable for developer mode (read from global service)
   protected developerMode: boolean = false;
 
+  // Unique identifier generated for this component instance using uuid.
+  private _uuid: string = uuidv4();
+
+  // Getter for the UUID
+  get uuid(): string {
+    return this._uuid;
+  }
+
+  set uuid(value: string) {
+    this._uuid = value;
+  }
+
   constructor(
     protected el: ElementRef,
     protected renderer2: Renderer2,
     protected devModeService: DeveloperModeService,
-    protected router: Router
+    protected router: Router,
+    protected pageComponentService: PageComponentService
   ) {
     // Subscribe to developer mode changes.
     this.devModeSubscription = this.devModeService.developerMode$.subscribe(mode => {
@@ -171,6 +186,23 @@ export class InteractableComponent implements OnInit, AfterViewInit, OnChanges, 
     this.startHeight = this.container.clientHeight;
   }
 
+  // --- Getters for x, y, width, and height ---
+  get x(): number {
+    return this.container ? this.container.offsetLeft : 0;
+  }
+
+  get y(): number {
+    return this.container ? this.container.offsetTop : 0;
+  }
+
+  get width(): number {
+    return this.container ? this.container.clientWidth : 0;
+  }
+  
+  get height(): number {
+    return this.container ? this.container.clientHeight : 0;
+  }
+
   // Click handler: if not in developer mode and redirectUrl is provided, navigate.
   @HostListener('click', ['$event'])
   onClick(event: MouseEvent): void {
@@ -182,7 +214,6 @@ export class InteractableComponent implements OnInit, AfterViewInit, OnChanges, 
 
   @HostListener('mousedown', ['$event'])
   onMouseDown(event: MouseEvent): void {
-    // For debugging, log myUrl and currentUrl.
     console.log('myUrl:', this.myUrl, 'currentUrl:', this.currentUrl);
     
     if (!this.draggable || !this.developerMode) {
@@ -228,14 +259,40 @@ export class InteractableComponent implements OnInit, AfterViewInit, OnChanges, 
     }
   }
 
-  @HostListener('document:mouseup')
-  onMouseUp(): void {
+  @HostListener('mouseup', ['$event'])
+  onMouseUp(event: MouseEvent): void {
     if (!this.developerMode) return;
     if (this.isDragging) console.log('Mouse up - stopping drag.');
     if (this.isResizing) console.log('Mouse up - stopping resize.');
     this.isDragging = false;
     this.isResizing = false;
+
+    // Delay execution to ensure any final layout updates are complete.
+    setTimeout(() => {
+      // Prepare updated component data.
+      const updatedComponentData = {
+        width: this.width,
+        height: this.height,
+        posX: this.x,
+        posY: this.y,
+        uuid: this.uuid,
+        pagePath: this.myUrl,
+        componentType: "default" // default value
+      };
+
+      console.log('Sending updated component data:', updatedComponentData);
+      this.pageComponentService.updatePageComponentByUuid(updatedComponentData).subscribe({
+        next: (result: PageComponent) => {
+          console.log('Component update PUT successful:', result);
+        },
+        error: (err: any) => {
+          console.error('Error updating component:', err);
+        }
+      });
+    }, 100);
   }
+
+
 
   startResize(event: MouseEvent): void {
     if (!this.developerMode || !this.resizable) return;
