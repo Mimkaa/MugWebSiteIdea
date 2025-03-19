@@ -44,4 +44,9 @@ export class PageComponentService {
       `${this.apiUrl}/page-components/by-url?pagePath=${encodeURIComponent(pagePath)}`
     );
   }
+  
+  // New method to delete a page component by its UUID.
+  deletePageComponentByUuid(uuid: string): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/page-component/by-uuid/${uuid}`);
+  }
 }

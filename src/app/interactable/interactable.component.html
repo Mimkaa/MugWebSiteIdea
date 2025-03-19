@@ -1,5 +1,5 @@
-<div class="interactable">
-    <ng-content></ng-content>
-    <div class="resizer" (mousedown)="startResize($event)"></div>
-  </div>
+<div class="interactable" [attr.data-component-id]="_uuid">
+  <ng-content></ng-content>
+  <div class="resizer" (mousedown)="startResize($event)"></div>
+</div>
   

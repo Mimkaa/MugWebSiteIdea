@@ -21,7 +21,7 @@
 <app-dev-context-menu
   *ngIf="developerMode"
   (addComponentAction)="handleAddComponent($event)"
-  (deleteComponentAction)="handleDeleteComponent()">
+  (deleteComponentAction)="deleteDynamicComponentById($event)">
 </app-dev-context-menu>
 
 <ng-template #fullApp>

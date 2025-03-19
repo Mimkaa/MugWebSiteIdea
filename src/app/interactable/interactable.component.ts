@@ -67,7 +67,7 @@ export class InteractableComponent implements OnInit, AfterViewInit, OnChanges, 
   protected developerMode: boolean = false;
 
   // Unique identifier generated for this component instance using uuid.
-  private _uuid: string = uuidv4();
+  public _uuid: string = uuidv4();
 
   // Getter for the UUID
   get uuid(): string {
