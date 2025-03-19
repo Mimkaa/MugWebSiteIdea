@@ -25,7 +25,7 @@ import { CustomReuseStrategy } from './custom-reuse-strategy'; // adjust the pat
   ],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css'],
-  providers: [{ provide: RouteReuseStrategy, useClass: CustomReuseStrategy }]
+  //providers: [{ provide: RouteReuseStrategy, useClass: CustomReuseStrategy }]
 })
 export class AppComponent implements OnInit, AfterViewInit {
   showRegistrationOnly = false;
@@ -63,6 +63,8 @@ export class AppComponent implements OnInit, AfterViewInit {
   ngOnInit(): void {
     this.showRegistrationOnly = (this.router.url === '/register');
     this.showHomeOnly = (this.router.url === '/home');
+
+    //this.router.routeReuseStrategy.shouldReuseRoute = () => false;
   
     this.router.events.pipe(filter(event => event instanceof NavigationEnd))
       .subscribe((event: NavigationEnd) => {
@@ -73,92 +75,95 @@ export class AppComponent implements OnInit, AfterViewInit {
         this.loadPageComponents(url);
       });
   
-    window.addEventListener('popstate', () => {
-      console.log('Popstate event detected, forcing component reload for route:', this.router.url);
-      this.loadPageComponents(this.router.url);
-    });
+    
   }
 
   ngAfterViewInit(): void {
-    this.loadPageComponents(this.router.url);
+    setTimeout(() => {
+      this.loadPageComponents(this.router.url);
+    }, 0);
   }
 
   loadPageComponents(pageUrl: string): void {
     console.log('Loading page components for:', pageUrl);
+    // Clear any existing components and reset flags/stack.
     this.dynamicContainer.clear();
     this.componentsLoaded = false;
-    // Clear the clicked views stack too.
     this.clickedViews = [];
-    this.ngZone.onStable.pipe(take(1)).subscribe(() => {
-      this.pageComponentService.getPageComponentsByUrl(pageUrl).subscribe({
-        next: (components: PageComponent[]) => {
-          console.log('Loaded page components:', components);
-          for (const compData of components) {
-            const componentClass = BLOCK_MAP[compData.componentType];
-            if (!componentClass) {
-              console.warn(`Component type "${compData.componentType}" not defined in BLOCK_MAP`);
-              continue;
-            }
-            const componentRef = this.dynamicContainer.createComponent(componentClass);
-            
-            // Set the attribute on the native element so it can be later identified.
-            componentRef.location.nativeElement.setAttribute('data-component-id', compData.uuid);
-            
-            // Attach a click listener to the .interactable element.
-            const interactableElem = componentRef.location.nativeElement.querySelector('.interactable');
-            if (interactableElem) {
-              interactableElem.addEventListener('click', (event: Event) => {
-                event.stopPropagation();
-                const hostView = componentRef.hostView;
-                // Remove if already in stack to update the order.
-                const existingIndex = this.clickedViews.indexOf(hostView);
-                if (existingIndex !== -1) {
-                  this.clickedViews.splice(existingIndex, 1);
-                }
-                this.clickedViews.push(hostView);
-                console.log('Dynamic component clicked. Click stack:', this.clickedViews);
-              });
-            } else {
-              console.warn('No .interactable element found in dynamic component.');
-            }
-            
-            (componentRef.instance as any).deactivate.subscribe(() => {
-              console.log('Deactivation event received from component.');
-              const index = this.dynamicContainer.indexOf(componentRef.hostView);
-              if (index !== -1) {
-                this.dynamicContainer.remove(index);
-                console.log('Component removed from dynamic container.');
-                // Also remove from the clicked stack if present.
-                const pos = this.clickedViews.indexOf(componentRef.hostView);
-                if (pos !== -1) {
-                  this.clickedViews.splice(pos, 1);
-                }
-              }
-            });
-            (componentRef.instance as any).initialWidth = `${compData.width}px`;
-            (componentRef.instance as any).initialHeight = `${compData.height}px`;
-            (componentRef.instance as any).initialLeft = `${compData.posX}px`;
-            (componentRef.instance as any).initialTop = `${compData.posY}px`;
-            (componentRef.instance as any).uuid = compData.uuid;
-            (componentRef.instance as any).myUrl = compData.pagePath;
-            (componentRef.instance as any).componentType = compData.componentType;
-            (componentRef.instance as any).cup = {
-              id: 'cup-unique-id',
-              name: 'My Hardcoded Cup',
-              modelUrl: 'assets/models/Mug.obj',
-              mtlUrl: 'assets/models/Mug.mtl',
-              myUrl: pageUrl
-            };
-            console.log('Created dynamic component from saved data:', compData);
+    
+    // Call the backend service directly.
+    this.pageComponentService.getPageComponentsByUrl(pageUrl).subscribe({
+      next: (components: PageComponent[]) => {
+        console.log('Loaded page components:', components);
+        components.forEach(compData => {
+          const componentClass = BLOCK_MAP[compData.componentType];
+          if (!componentClass) {
+            console.warn(`Component type "${compData.componentType}" not defined in BLOCK_MAP`);
+            return;
           }
-          this.componentsLoaded = true;
-        },
-        error: (err) => {
-          console.error('Error loading page components:', err);
-        }
-      });
+          const componentRef = this.dynamicContainer.createComponent(componentClass);
+          
+          // Set the attribute on the native element so it can be later identified.
+          componentRef.location.nativeElement.setAttribute('data-component-id', compData.uuid);
+          
+          // Attach a click listener to the .interactable element.
+          const interactableElem = componentRef.location.nativeElement.querySelector('.interactable');
+          if (interactableElem) {
+            interactableElem.addEventListener('click', (event: Event) => {
+              event.stopPropagation();
+              const hostView = componentRef.hostView;
+              // Update the click stack: remove if already present.
+              const existingIndex = this.clickedViews.indexOf(hostView);
+              if (existingIndex !== -1) {
+                this.clickedViews.splice(existingIndex, 1);
+              }
+              this.clickedViews.push(hostView);
+              console.log('Dynamic component clicked. Click stack:', this.clickedViews);
+            });
+          } else {
+            console.warn('No .interactable element found in dynamic component.');
+          }
+          
+          // Listen for the component's deactivation event.
+          (componentRef.instance as any).deactivate.subscribe(() => {
+            console.log('Deactivation event received from component.');
+            const index = this.dynamicContainer.indexOf(componentRef.hostView);
+            if (index !== -1) {
+              this.dynamicContainer.remove(index);
+              console.log('Component removed from dynamic container.');
+              // Remove from the clicked views stack if present.
+              const pos = this.clickedViews.indexOf(componentRef.hostView);
+              if (pos !== -1) {
+                this.clickedViews.splice(pos, 1);
+              }
+            }
+          });
+          
+          // Set up the component instance properties.
+          (componentRef.instance as any).initialWidth = `${compData.width}px`;
+          (componentRef.instance as any).initialHeight = `${compData.height}px`;
+          (componentRef.instance as any).initialLeft = `${compData.posX}px`;
+          (componentRef.instance as any).initialTop = `${compData.posY}px`;
+          (componentRef.instance as any).uuid = compData.uuid;
+          (componentRef.instance as any).myUrl = compData.pagePath;
+          (componentRef.instance as any).componentType = compData.componentType;
+          (componentRef.instance as any).cup = {
+            id: 'cup-unique-id',
+            name: 'My Hardcoded Cup',
+            modelUrl: 'assets/models/Mug.obj',
+            mtlUrl: 'assets/models/Mug.mtl',
+            myUrl: pageUrl
+          };
+          console.log('Created dynamic component from saved data:', compData);
+        });
+        this.componentsLoaded = true;
+      },
+      error: (err) => {
+        console.error('Error loading page components:', err);
+      }
     });
   }
+  
 
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent): void {
