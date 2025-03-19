@@ -1,5 +1,5 @@
 import { Component, OnInit, AfterViewInit, ViewChild, ViewContainerRef, HostListener, NgZone } from '@angular/core';
-import { Router, NavigationEnd, RouterOutlet, RouterModule } from '@angular/router';
+import { Router, NavigationEnd, RouterOutlet, RouterModule, RouteReuseStrategy } from '@angular/router';
 import { filter, take } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
 
@@ -10,6 +10,7 @@ import { GreetingService } from '../greeting/greeting.service';
 import { DevContextMenuComponent } from './dev-context-menu/dev-context-menu.component';
 import { BLOCK_MAP } from './dynamic/block-map';
 import { PageComponentService, PageComponent } from './page-component/page-component.service';
+import { CustomReuseStrategy } from './custom-reuse-strategy'; // adjust the path if necessary
 
 @Component({
   selector: 'app-root',
@@ -23,7 +24,9 @@ import { PageComponentService, PageComponent } from './page-component/page-compo
     DevContextMenuComponent
   ],
   templateUrl: './app.component.html',
-  styleUrls: ['./app.component.css']
+  styleUrls: ['./app.component.css'],
+  // Provide the custom reuse strategy so Angular uses it for routing.
+  providers: [{ provide: RouteReuseStrategy, useClass: CustomReuseStrategy }]
 })
 export class AppComponent implements OnInit, AfterViewInit {
   showRegistrationOnly = false;
@@ -60,8 +63,8 @@ export class AppComponent implements OnInit, AfterViewInit {
     // Set initial flags based on the current URL.
     this.showRegistrationOnly = (this.router.url === '/register');
     this.showHomeOnly = (this.router.url === '/home');
-
-    // Listen for NavigationEnd events and reload dynamic components when the URL changes.
+  
+    // Listen for NavigationEnd events to reload dynamic components when the URL changes.
     this.router.events.pipe(filter(event => event instanceof NavigationEnd))
       .subscribe((event: NavigationEnd) => {
         const url = event.urlAfterRedirects;
@@ -70,6 +73,14 @@ export class AppComponent implements OnInit, AfterViewInit {
         console.log('Navigation ended. New URL:', url);
         this.loadPageComponents(url);
       });
+  
+    // Fallback: Listen for browser popstate events.
+    window.addEventListener('popstate', () => {
+      if (this.router.url === '/home') {
+        console.log('Popstate event detected on /home, forcing component reload.');
+        this.loadPageComponents('/home');
+      }
+    });
   }
 
   ngAfterViewInit(): void {
